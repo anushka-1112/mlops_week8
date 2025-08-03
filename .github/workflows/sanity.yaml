@@ -1,0 +1,48 @@
+name: Sanity Test
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sanity_test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - uses: iterative/setup-cml@v2
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Sanity Check
+        run: |
+          python test.py 2>&1 | tee sanity_output.txt
+
+      - name: Create CML Report
+        env:
+          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "# 🧪 Sanity Check Report" > report.md
+          echo "### ✅ Model evaluated on sample.csv" >> report.md
+          echo "\`\`\`" >> report.md
+          cat sanity_output.txt >> report.md
+          echo "\`\`\`" >> report.md
+          echo "### 📊 Metrics from training" >> report.md
+          echo "\`\`\`" >> report.md
+          cat metrics.csv >> report.md
+          echo "\`\`\`" >> report.md
+          cml comment create --publish report.md
+
